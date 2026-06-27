@@ -38,7 +38,7 @@ if "!MISSING!"=="1" (
 )
 echo   [OK] Estructura correcta
 
-:: ── Verificar Python ─────────────────────────────────────────────────────────
+:: ── Verificar Python 3.10+ ────────────────────────────────────────────────────
 echo.
 echo [CHECK] Verificando Python...
 python --version >nul 2>&1
@@ -52,7 +52,16 @@ if errorlevel 1 (
 for /f "tokens=2" %%V in ('python --version 2^>^&1') do set "PYVER=%%V"
 echo   [OK] Python !PYVER!
 
-:: ── Verificar Node.js ────────────────────────────────────────────────────────
+:: ── Verificar pip ─────────────────────────────────────────────────────────────
+pip --version >nul 2>&1
+if errorlevel 1 (
+    echo   [ERROR] pip no disponible. Ejecuta: python -m ensurepip --upgrade
+    pause
+    exit /b 1
+)
+echo   [OK] pip disponible
+
+:: ── Verificar Node.js 18+ ─────────────────────────────────────────────────────
 echo [CHECK] Verificando Node.js...
 node --version >nul 2>&1
 if errorlevel 1 (
@@ -64,7 +73,6 @@ if errorlevel 1 (
 for /f %%V in ('node --version 2^>^&1') do set "NODEVER=%%V"
 echo   [OK] Node.js !NODEVER!
 
-:: ── Verificar npm ────────────────────────────────────────────────────────────
 npm --version >nul 2>&1
 if errorlevel 1 (
     echo   [ERROR] npm no encontrado. Reinstala Node.js desde https://nodejs.org
@@ -76,19 +84,20 @@ echo   [OK] npm disponible
 :: ── Crear directorios necesarios ─────────────────────────────────────────────
 echo.
 echo [SETUP] Creando directorios necesarios...
-if not exist "server\keys"  mkdir "server\keys"
-if not exist "server\logs"  mkdir "server\logs"
+if not exist "server\keys"   mkdir "server\keys"
+if not exist "server\logs"   mkdir "server\logs"
+if not exist "agent\logs"    mkdir "agent\logs"
 echo   [OK] Directorios listos
 
-:: ── 1. Dependencias del servidor ─────────────────────────────────────────────
+:: ── 1. Dependencias del servidor (Python) ─────────────────────────────────────
 echo.
 echo [1/4] Instalando dependencias del servidor (Python)...
 cd /d "%BASE%server"
 
 pip install -r requirements.txt --quiet
 if errorlevel 1 (
-    echo   [WARN] pip con requirements.txt fallo. Instalando paquete por paquete...
-    set "FAILED=0"
+    echo   [WARN] requirements.txt fallo. Instalando paquete por paquete...
+    set "SRV_FAIL=0"
     for %%P in (
         "fastapi==0.115.0"
         "uvicorn[standard]==0.32.0"
@@ -97,6 +106,7 @@ if errorlevel 1 (
         "pydantic>=2.11.7"
         "python-dotenv==1.0.1"
         "rich==13.9.4"
+        "typer==0.13.0"
         "dnslib==0.9.25"
         "PyJWT>=2.9.0"
         "httpx>=0.27.0"
@@ -105,44 +115,54 @@ if errorlevel 1 (
         pip install %%P --quiet
         if errorlevel 1 (
             echo   [WARN] No se pudo instalar: %%P
-            set "FAILED=1"
+            set "SRV_FAIL=1"
         )
     )
-    if "!FAILED!"=="1" (
-        echo   [WARN] Algunos paquetes no se instalaron. El servidor puede tener errores.
-    ) else (
-        echo   [OK] Todos los paquetes instalados individualmente
-    )
+    if "!SRV_FAIL!"=="0" echo   [OK] Paquetes del servidor instalados individualmente
 ) else (
     echo   [OK] Dependencias del servidor instaladas
 )
 
-:: ── 1b. Solana SDK (opcional) ────────────────────────────────────────────────
-echo [1b/4] Instalando Solana SDK (opcional, para blockchain)...
-pip install "solana>=0.39.0" "solders>=0.27.0" --quiet >nul 2>&1
+:: ── 1b. Solana SDK (opcional — puede fallar en algunos entornos) ───────────────
+echo [1b] Instalando Solana SDK (blockchain anchoring)...
+pip install "solana>=0.39.0" "solders>=0.27.0" --quiet
 if errorlevel 1 (
     echo   [WARN] Solana SDK no disponible - blockchain anchoring desactivado
 ) else (
     echo   [OK] Solana SDK instalado
 )
 
-:: ── 2. Dependencias del agente ───────────────────────────────────────────────
+:: ── 2. Dependencias del agente (Python) ───────────────────────────────────────
 echo.
 echo [2/4] Instalando dependencias del agente (Python)...
 cd /d "%BASE%agent"
-pip install -r requirements.txt --quiet 2>nul
-if errorlevel 1 (
-    pip install psutil websockets cryptography --quiet
-)
-echo   [OK] Dependencias del agente instaladas
 
-:: ── 3. Dependencias del dashboard ───────────────────────────────────────────
+pip install -r requirements.txt --quiet
+if errorlevel 1 (
+    echo   [WARN] agent/requirements.txt fallo. Instalando paquete por paquete...
+    for %%P in (
+        "websockets==13.1"
+        "cryptography==43.0.3"
+        "pydantic>=2.11.7"
+        "python-dotenv==1.0.1"
+        "psutil==6.1.0"
+        "dnslib==0.9.25"
+    ) do (
+        pip install %%P --quiet
+        if errorlevel 1 echo   [WARN] No se pudo instalar: %%P
+    )
+) else (
+    echo   [OK] Dependencias del agente instaladas
+)
+
+:: ── 3. Dependencias del dashboard (Node.js) ───────────────────────────────────
 echo.
 echo [3/4] Instalando dependencias del dashboard (Node.js)...
 cd /d "%BASE%dashboard"
+
 call npm install --prefer-offline 2>nul
 if errorlevel 1 (
-    echo   Reintentando npm install con red...
+    echo   Reintentando npm install con conexion directa...
     call npm install
     if errorlevel 1 (
         echo   [ERROR] npm install fallo. Verifica tu conexion a internet.
@@ -152,7 +172,7 @@ if errorlevel 1 (
 )
 echo   [OK] Dashboard Node.js listo
 
-:: ── 4. Configurar .env ───────────────────────────────────────────────────────
+:: ── 4. Configurar .env ────────────────────────────────────────────────────────
 echo.
 echo [4/4] Configurando variables de entorno...
 cd /d "%BASE%server"
@@ -181,13 +201,25 @@ if not exist ".env" (
     echo   [OK] .env ya existe - omitiendo
 )
 
-:: ── Verificacion final ───────────────────────────────────────────────────────
+:: ── Verificacion final ────────────────────────────────────────────────────────
 echo.
-echo [VERIFY] Verificando instalacion...
+echo [VERIFY] Verificando instalacion completa...
+
+echo   Servidor:
 cd /d "%BASE%server"
-python -c "import fastapi, uvicorn, websockets, cryptography, pydantic, jwt, dnslib, psutil; print('  [OK] Todos los modulos Python disponibles')" 2>nul
-if errorlevel 1 (
-    echo   [WARN] Algunos modulos Python pueden faltar. Revisa los warnings arriba.
+python -c "import fastapi, uvicorn, websockets, cryptography, pydantic, jwt, dnslib, psutil, httpx, rich, typer; print('    [OK] fastapi uvicorn websockets cryptography pydantic jwt dnslib psutil httpx rich typer')" 2>nul
+if errorlevel 1 echo   [WARN] Faltan modulos en el servidor - revisa los warnings arriba.
+
+echo   Agente:
+cd /d "%BASE%agent"
+python -c "import websockets, cryptography, pydantic, psutil, dnslib; print('    [OK] websockets cryptography pydantic psutil dnslib')" 2>nul
+if errorlevel 1 echo   [WARN] Faltan modulos en el agente - revisa los warnings arriba.
+
+echo   Dashboard:
+if exist "%BASE%dashboard\node_modules\vite" (
+    echo     [OK] node_modules presentes
+) else (
+    echo   [WARN] node_modules no encontrados - npm install puede haber fallado
 )
 
 cd /d "%BASE%"
@@ -197,8 +229,8 @@ echo  ============================================
 echo       OPENC2 v1.0 INSTALACION COMPLETA
 echo  ============================================
 echo.
-echo   Las claves RSA y la wallet Solana se generan
-echo   automaticamente al primer inicio del servidor.
+echo   Claves RSA y wallet Solana se generan
+echo   automaticamente al primer inicio.
 echo.
 echo   Siguiente paso:  start.bat
 echo   Dashboard:       http://localhost:5173
