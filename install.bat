@@ -8,11 +8,11 @@ echo       OPENC2 v1.0 - FULL INSTALLATION
 echo  ============================================
 echo.
 
-:: ── Posicionarse en el directorio del .bat sin importar desde donde se ejecute
+:: ── Posicionarse en el directorio del .bat ───────────────────────────────────
 cd /d "%~dp0"
 set "BASE=%~dp0"
 
-:: ── Verificar estructura completa del repositorio ────────────────────────────
+:: ── Verificar estructura del repositorio ─────────────────────────────────────
 echo [CHECK] Verificando estructura del repositorio...
 set "MISSING=0"
 for %%D in (server agent dashboard server\core agent\plugins dashboard\src) do (
@@ -29,7 +29,7 @@ for %%F in (server\main.py server\requirements.txt agent\agent.py agent\requirem
 )
 if "!MISSING!"=="1" (
     echo.
-    echo  El repositorio esta incompleto. Clona con:
+    echo  El repositorio esta incompleto. Clona de nuevo con:
     echo    git clone https://github.com/CIBERC2/demo-repository.git
     echo    cd demo-repository
     echo    install.bat
@@ -38,7 +38,7 @@ if "!MISSING!"=="1" (
 )
 echo   [OK] Estructura correcta
 
-:: ── Verificar Python 3.10+ ────────────────────────────────────────────────────
+:: ── Verificar Python ──────────────────────────────────────────────────────────
 echo.
 echo [CHECK] Verificando Python...
 python --version >nul 2>&1
@@ -52,16 +52,24 @@ if errorlevel 1 (
 for /f "tokens=2" %%V in ('python --version 2^>^&1') do set "PYVER=%%V"
 echo   [OK] Python !PYVER!
 
-:: ── Verificar pip ─────────────────────────────────────────────────────────────
-pip --version >nul 2>&1
+:: ── Garantizar pip (usando python -m pip siempre, mas robusto que bare pip) ──
+echo [CHECK] Verificando pip...
+python -m pip --version >nul 2>&1
 if errorlevel 1 (
-    echo   [ERROR] pip no disponible. Ejecuta: python -m ensurepip --upgrade
-    pause
-    exit /b 1
+    echo   pip no disponible. Instalando automaticamente con ensurepip...
+    python -m ensurepip --upgrade >nul 2>&1
+    python -m pip --version >nul 2>&1
+    if errorlevel 1 (
+        echo   [ERROR] No se pudo instalar pip.
+        echo          Ejecuta manualmente: python -m ensurepip --upgrade
+        pause
+        exit /b 1
+    )
 )
-echo   [OK] pip disponible
+python -m pip install --upgrade pip --quiet 2>nul
+echo   [OK] pip listo
 
-:: ── Verificar Node.js 18+ ─────────────────────────────────────────────────────
+:: ── Verificar Node.js ────────────────────────────────────────────────────────
 echo [CHECK] Verificando Node.js...
 node --version >nul 2>&1
 if errorlevel 1 (
@@ -84,17 +92,17 @@ echo   [OK] npm disponible
 :: ── Crear directorios necesarios ─────────────────────────────────────────────
 echo.
 echo [SETUP] Creando directorios necesarios...
-if not exist "server\keys"   mkdir "server\keys"
-if not exist "server\logs"   mkdir "server\logs"
-if not exist "agent\logs"    mkdir "agent\logs"
+if not exist "server\keys"  mkdir "server\keys"
+if not exist "server\logs"  mkdir "server\logs"
+if not exist "agent\logs"   mkdir "agent\logs"
 echo   [OK] Directorios listos
 
-:: ── 1. Dependencias del servidor (Python) ─────────────────────────────────────
+:: ── 1. Dependencias del servidor ─────────────────────────────────────────────
 echo.
 echo [1/4] Instalando dependencias del servidor (Python)...
 cd /d "%BASE%server"
 
-pip install -r requirements.txt --quiet
+python -m pip install -r requirements.txt --quiet
 if errorlevel 1 (
     echo   [WARN] requirements.txt fallo. Instalando paquete por paquete...
     set "SRV_FAIL=0"
@@ -112,7 +120,7 @@ if errorlevel 1 (
         "httpx>=0.27.0"
         "psutil>=5.9.0"
     ) do (
-        pip install %%P --quiet
+        python -m pip install %%P --quiet
         if errorlevel 1 (
             echo   [WARN] No se pudo instalar: %%P
             set "SRV_FAIL=1"
@@ -123,21 +131,21 @@ if errorlevel 1 (
     echo   [OK] Dependencias del servidor instaladas
 )
 
-:: ── 1b. Solana SDK (opcional — puede fallar en algunos entornos) ───────────────
+:: ── 1b. Solana SDK (opcional) ─────────────────────────────────────────────────
 echo [1b] Instalando Solana SDK (blockchain anchoring)...
-pip install "solana>=0.39.0" "solders>=0.27.0" --quiet
+python -m pip install "solana>=0.39.0" "solders>=0.27.0" --quiet
 if errorlevel 1 (
     echo   [WARN] Solana SDK no disponible - blockchain anchoring desactivado
 ) else (
     echo   [OK] Solana SDK instalado
 )
 
-:: ── 2. Dependencias del agente (Python) ───────────────────────────────────────
+:: ── 2. Dependencias del agente ───────────────────────────────────────────────
 echo.
 echo [2/4] Instalando dependencias del agente (Python)...
 cd /d "%BASE%agent"
 
-pip install -r requirements.txt --quiet
+python -m pip install -r requirements.txt --quiet
 if errorlevel 1 (
     echo   [WARN] agent/requirements.txt fallo. Instalando paquete por paquete...
     for %%P in (
@@ -148,14 +156,14 @@ if errorlevel 1 (
         "psutil==6.1.0"
         "dnslib==0.9.25"
     ) do (
-        pip install %%P --quiet
+        python -m pip install %%P --quiet
         if errorlevel 1 echo   [WARN] No se pudo instalar: %%P
     )
 ) else (
     echo   [OK] Dependencias del agente instaladas
 )
 
-:: ── 3. Dependencias del dashboard (Node.js) ───────────────────────────────────
+:: ── 3. Dependencias del dashboard ────────────────────────────────────────────
 echo.
 echo [3/4] Instalando dependencias del dashboard (Node.js)...
 cd /d "%BASE%dashboard"
@@ -208,18 +216,22 @@ echo [VERIFY] Verificando instalacion completa...
 echo   Servidor:
 cd /d "%BASE%server"
 python -c "import fastapi, uvicorn, websockets, cryptography, pydantic, jwt, dnslib, psutil, httpx, rich, typer; print('    [OK] fastapi uvicorn websockets cryptography pydantic jwt dnslib psutil httpx rich typer')" 2>nul
-if errorlevel 1 echo   [WARN] Faltan modulos en el servidor - revisa los warnings arriba.
+if errorlevel 1 (
+    echo   [WARN] Modulos del servidor incompletos. Revisa los WARN arriba.
+)
 
 echo   Agente:
 cd /d "%BASE%agent"
 python -c "import websockets, cryptography, pydantic, psutil, dnslib; print('    [OK] websockets cryptography pydantic psutil dnslib')" 2>nul
-if errorlevel 1 echo   [WARN] Faltan modulos en el agente - revisa los warnings arriba.
+if errorlevel 1 (
+    echo   [WARN] Modulos del agente incompletos. Revisa los WARN arriba.
+)
 
 echo   Dashboard:
 if exist "%BASE%dashboard\node_modules\vite" (
     echo     [OK] node_modules presentes
 ) else (
-    echo   [WARN] node_modules no encontrados - npm install puede haber fallado
+    echo   [WARN] node_modules no encontrados
 )
 
 cd /d "%BASE%"
