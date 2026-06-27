@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>OpenC2 v1.0 — Demo Interactivo</title>
+<style>
+:root{--g:#00ff88;--c:#00d4ff;--p:#a855f7;--r:#ff4444;--o:#f97316;--bg:#050a0f;--bg3:#0d1f2d;--bd:rgba(0,212,255,0.18);--tx:#e2e8f0;--mu:#64748b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+canvas{position:fixed;top:0;left:0;width:100%;height:100%;opacity:.04;z-index:0;pointer-events:none}
+/* NAV */
+#nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:11px 32px;background:rgba(5,10,15,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd)}
+.logo{font-size:12px;font-weight:800;letter-spacing:3px;color:var(--c);text-transform:uppercase}
+.ctr{font-size:11px;color:var(--mu);font-family:monospace}
+.nbtn{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:6px;border:1px solid var(--bd);background:rgba(0,212,255,.06);color:var(--c);font-size:11px;cursor:pointer;transition:all .2s}
+.nbtn:hover{background:rgba(0,212,255,.14)}
+#progress{position:fixed;bottom:0;left:0;height:3px;background:linear-gradient(90deg,var(--g),var(--c),var(--p));transition:width .5s;z-index:100;box-shadow:0 0 8px var(--c)}
+.arrow{position:fixed;top:50%;transform:translateY(-50%);z-index:100;background:rgba(0,212,255,.07);border:1px solid var(--bd);color:var(--c);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.arrow:hover{background:rgba(0,212,255,.18)}
+#ap{left:10px}#an{right:10px}
+#dots{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:100}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--mu);cursor:pointer;transition:all .3s}
+.dot.on{background:var(--c);box-shadow:0 0 5px var(--c);width:16px;border-radius:3px}
+/* NOTES */
+#np{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:200;max-width:700px;width:90%;background:rgba(0,0,0,.94);border:1px solid rgba(168,85,247,.4);border-radius:12px;padding:14px 18px;display:none}
+#np.show{display:block}
+.np-lbl{font-size:9px;letter-spacing:3px;color:var(--p);text-transform:uppercase;margin-bottom:5px}
+#np-text{font-size:12px;color:#ccc;line-height:1.65}
+/* SLIDES */
+#slides{position:relative;width:100%;height:100vh;z-index:1}
+.slide{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:52px 52px 100px;opacity:0;transform:translateX(50px);transition:all .55s cubic-bezier(.16,1,.3,1);pointer-events:none}
+.slide.on{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.out{opacity:0;transform:translateX(-50px)}
+/* VALUE PROP */
+.vp{position:absolute;bottom:34px;left:52px;right:52px;background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.vp-icon{font-size:18px;flex-shrink:0}
+.vp-lbl{font-size:9px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:2px;margin-bottom:2px}
+.vp-txt{font-size:11px;color:var(--mu);line-height:1.4}
+/* TYPE */
+.tag{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--c);opacity:.7;margin-bottom:8px}
+.ptag{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--o);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.ptag::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--o);animation:pb 1.5s infinite}
+@keyframes pb{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.4)}50%{box-shadow:0 0 0 4px rgba(249,115,22,0)}}
+h1.ht{font-size:clamp(50px,10vw,90px);font-weight:900;line-height:1;background:linear-gradient(135deg,#fff 0%,var(--c) 40%,var(--g) 80%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-2px;margin-bottom:6px}
+h2.st{font-size:clamp(20px,3.2vw,36px);font-weight:800;color:#fff;margin-bottom:8px}
+.sub{font-size:clamp(13px,1.7vw,16px);color:var(--mu);line-height:1.65;text-align:center;max-width:620px;margin-bottom:16px}
+.acc{color:var(--c)}.agg{color:var(--g)}.app{color:var(--p)}.aoo{color:var(--o)}
+.hv{display:inline-block;padding:4px 14px;border-radius:999px;border:1px solid var(--g);color:var(--g);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:22px;animation:gp 2s infinite}
+@keyframes gp{0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,.4)}50%{box-shadow:0 0 0 5px rgba(0,255,136,0)}}
+.hbadges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.badge{padding:5px 14px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid}
+.bg{border-color:var(--g);color:var(--g);background:rgba(0,255,136,.07)}
+.bc{border-color:var(--c);color:var(--c);background:rgba(0,212,255,.07)}
+.bp{border-color:var(--p);color:var(--p);background:rgba(168,85,247,.07)}
+.bo{border-color:var(--o);color:var(--o);background:rgba(249,115,22,.07)}
+.scanl{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);animation:scan 3s linear infinite;opacity:.3}
+@keyframes scan{0%{top:46px}100%{top:100%}}
+/* DEMO BTN */
+.dbtn{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:8px;border:1px solid var(--g);background:rgba(0,255,136,.08);color:var(--g);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .25s;margin-top:10px}
+.dbtn:hover{background:rgba(0,255,136,.18);box-shadow:0 0 20px rgba(0,255,136,.2)}
+.dbtn:active{transform:scale(.97)}
+.dbtn:disabled{opacity:.4;cursor:default}
+.pdot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:pb 1s infinite}
+/* TERMINAL */
+.tw{width:100%;max-width:680px;border-radius:12px;overflow:hidden;border:1px solid rgba(0,212,255,.2);box-shadow:0 0 50px rgba(0,212,255,.1)}
+.th{background:#1a1a2e;padding:9px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid rgba(255,255,255,.05)}
+.td{width:10px;height:10px;border-radius:50%}
+.td.r{background:#ff5f57}.td.y{background:#febc2e}.td.gg{background:#28c840}
+.ttl{font-size:11px;color:var(--mu);margin-left:6px;font-family:monospace}
+.tb{background:#0d1117;padding:16px;font-family:monospace;font-size:12px;line-height:1.85;min-height:220px;max-height:260px;overflow-y:auto}
+.tb::-webkit-scrollbar{width:4px}.tb::-webkit-scrollbar-thumb{background:var(--bd)}
+.tpmt{color:var(--g)}.tcmd{color:#fff}.tout{color:var(--mu);padding-left:12px}
+.tsuc{color:var(--g);padding-left:12px}.tinf{color:var(--c);padding-left:12px}.twrn{color:var(--o);padding-left:12px}
+.tline{display:flex;gap:7px}
+.cur{display:inline-block;width:7px;height:13px;background:var(--g);animation:bk 1s infinite;vertical-align:middle}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:0}}
+/* PROBLEMA */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:760px;margin-top:16px}
+.pc{padding:16px;border-radius:12px;border:1px solid rgba(255,68,68,.2);background:rgba(255,68,68,.05)}
+.pc h3{color:var(--r);font-size:13px;margin-bottom:5px}
+.pc p{font-size:12px;color:var(--mu);line-height:1.5}
+.pc .pico{font-size:20px;margin-bottom:6px}
+/* ARCH */
+.arch{display:flex;flex-direction:column;align-items:center;margin-top:14px}
+.al{display:flex;align-items:center;gap:12px;padding:12px 22px;border-radius:10px;min-width:360px;border:1px solid;transition:all .3s;cursor:default}
+.al:hover{transform:scale(1.02)}
+.alop{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.08)}
+.alsv{border-color:rgba(0,212,255,.5);background:rgba(0,212,255,.08)}
+.alag{border-color:rgba(0,255,136,.5);background:rgba(0,255,136,.08)}
+.ac{display:flex;flex-direction:column;align-items:center;padding:3px 0}
+.acl{width:2px;height:12px;background:linear-gradient(var(--c),var(--g))}
+.acb{font-size:9px;font-family:monospace;color:var(--c);letter-spacing:1px;white-space:nowrap}
+.altt{font-weight:700;font-size:13px;color:#fff}
+.ald{font-size:10px;color:var(--mu);margin-top:1px}
+.chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.chip{padding:2px 7px;border-radius:999px;font-size:9px;font-weight:700;border:1px solid rgba(0,255,136,.3);color:var(--g);background:rgba(0,255,136,.06)}
+/* CRYPTO */
+.cstage{width:100%;max-width:680px;background:rgba(13,31,45,.7);border:1px solid var(--bd);border-radius:14px;padding:20px;margin-top:12px}
+.csrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.csbox{padding:12px 18px;border-radius:10px;text-align:center;min-width:110px}
+.csbox.agt{border:1px solid rgba(0,255,136,.4);background:rgba(0,255,136,.07)}
+.csbox.srv{border:1px solid rgba(0,212,255,.4);background:rgba(0,212,255,.07)}
+.cslbl{font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
+.csname{font-size:15px;font-weight:800}
+.csbox.agt .csname{color:var(--g)}.csbox.srv .csname{color:var(--c)}
+.csmid{flex:1;display:flex;flex-direction:column;gap:8px}
+.csarr{position:relative;height:2px;background:rgba(255,255,255,.06);overflow:hidden}
+.csafill{position:absolute;left:0;top:0;height:100%;width:0;transition:width 1.1s ease}
+.csarr.a2s .csafill{background:linear-gradient(90deg,var(--g),var(--c))}
+.csarr.s2a .csafill{background:linear-gradient(90deg,var(--c),var(--g))}
+.csalbl{font-size:9px;color:var(--mu);text-align:center;margin-bottom:2px;font-family:monospace;white-space:nowrap}
+.csstep{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px;color:var(--mu);opacity:0;transform:translateX(-8px);transition:all .4s}
+.csstep.show{opacity:1;transform:translateX(0)}
+.csstep.ok .csst{color:var(--g)}
+.cssi{font-size:14px;flex-shrink:0}.csst{flex:1}
+.lock{font-size:36px;text-align:center;margin-top:8px;opacity:0;transform:scale(.5);transition:all .5s}
+.lock.show{opacity:1;transform:scale(1)}
+/* OPSEC */
+.rdrwrap{display:flex;gap:24px;align-items:flex-start;margin-top:12px;width:100%;max-width:700px}
+.opsec-res{flex:1;background:rgba(13,31,45,.7);border:1px solid var(--bd);border-radius:12px;padding:14px}
+.or-ttl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:10px}
+.ori{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px;opacity:0;transform:translateX(-6px);transition:all .35s}
+.ori.show{opacity:1;transform:translateX(0)}
+.orico{font-size:13px;flex-shrink:0}.orl{flex:1;color:var(--tx)}
+.ors{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.ors.ok{color:var(--g)}.ors.warn{color:var(--o)}.ors.alrt{color:var(--r)}
+@keyframes rdr{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+#rsweep.spin{animation:rdr 2.2s linear infinite;transform-origin:90px 90px}
+/* FILE TRANSFER */
+.ftwrap{width:100%;max-width:640px;background:rgba(13,31,45,.7);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-top:12px}
+.ftrow{margin-bottom:12px}
+.ftlbl{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:12px}
+.ftnm{color:#fff;font-weight:600}.ftpct{color:var(--g);font-weight:700;font-family:monospace}
+.ftbar{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.ftfill{height:100%;border-radius:4px;width:0;transition:width 2.5s ease}
+.ftu .ftfill{background:linear-gradient(90deg,var(--c),var(--g))}
+.ftd .ftfill{background:linear-gradient(90deg,var(--p),var(--c))}
+.ftmeta{font-size:10px;color:var(--mu);margin-top:3px}
+.ftv{padding:8px 12px;border-radius:8px;background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.2);font-size:11px;color:var(--g);margin-top:8px;opacity:0;transition:opacity .5s}
+.ftv.show{opacity:1}
+/* PERSIST */
+.pswrap{width:100%;max-width:660px;background:rgba(13,31,45,.7);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-top:12px}
+.pstabs{display:flex;gap:6px;margin-bottom:12px}
+.pstb{padding:5px 14px;border-radius:6px;border:1px solid var(--bd);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;color:var(--mu)}
+.pstb.on{border-color:var(--c);color:var(--c);background:rgba(0,212,255,.08)}
+.pscon{display:none}
+.pscon.on{display:block}
+.pscode{font-family:monospace;font-size:11px;padding:12px;background:#0d1117;border-radius:8px;color:var(--tx);line-height:1.8;opacity:0;transform:translateY(6px);transition:all .4s}
+.pscode.show{opacity:1;transform:translateY(0)}
+.pk{color:var(--o)}.pv{color:var(--g)}.pcc{color:var(--mu)}
+/* BLOCKCHAIN */
+.chainwrap{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:8px 0;margin-top:12px;width:100%;max-width:800px}
+.chainwrap::-webkit-scrollbar{height:4px}.chainwrap::-webkit-scrollbar-thumb{background:var(--bd)}
+.cblk{min-width:125px;padding:11px 12px;border-radius:10px;border:1px solid rgba(249,115,22,.35);background:rgba(249,115,22,.07);flex-shrink:0;opacity:0;transform:scale(.8);transition:all .4s}
+.cblk.show{opacity:1;transform:scale(1)}
+.cbid{font-size:9px;color:var(--o);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
+.cbhsh{font-family:monospace;font-size:8px;color:var(--mu);word-break:break-all}
+.cbdat{font-size:11px;color:#fff;margin-top:4px;font-weight:600}
+.cbts{font-size:8px;color:var(--mu);margin-top:2px}
+.clink{color:var(--o);font-size:18px;padding:0 3px;display:flex;align-items:center;flex-shrink:0;opacity:0;transition:opacity .3s}
+.clink.show{opacity:1}
+.csol{min-width:118px;padding:12px 14px;border-radius:10px;border:1px solid rgba(153,69,255,.5);background:rgba(153,69,255,.08);text-align:center;flex-shrink:0;opacity:0;transform:scale(.8);transition:all .4s}
+.csol.show{opacity:1;transform:scale(1)}
+.csollbl{font-size:9px;color:#9945ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
+.csolval{font-size:14px;font-weight:800;color:#9945ff}
+.csoltx{font-size:8px;color:var(--mu);margin-top:3px;font-family:monospace;word-break:break-all}
+/* DASHBOARD */
+.dashwrap{width:100%;max-width:740px;background:rgba(13,31,45,.7);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-top:12px}
+.dashhdr{background:#0a1520;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd)}
+.dashttl{font-size:12px;font-weight:700;color:var(--c)}
+.dashst{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu)}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:pb 1s infinite}
+.dashbody{display:grid;grid-template-columns:1fr 1.6fr;gap:0}
+.dashag{border-right:1px solid var(--bd);padding:11px}
+.dashlog{padding:11px}
+.dlbl{font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px}
+.agitem{display:flex;align-items:center;gap:7px;padding:6px;border-radius:8px;margin-bottom:5px;background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.12);font-size:11px}
+.agdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.agdot.on{background:var(--g);animation:pb 1.5s infinite}
+.agnm{font-weight:600;color:#fff}.agmt{font-size:10px;color:var(--mu)}
+.agbdg{padding:1px 7px;border-radius:999px;font-size:9px;font-weight:700;margin-left:auto;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:var(--p)}
+.lgi{font-size:10px;font-family:monospace;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);color:var(--mu)}
+.lgt{color:var(--c);margin-right:7px}.lgv{color:var(--g)}.lgw{color:var(--o)}
+/* VS TABLE */
+.vstbl{width:100%;max-width:720px;border-radius:12px;overflow:hidden;border:1px solid var(--bd);margin-top:16px;font-size:12px}
+.vstbl thead tr{background:#0a1520}
+.vstbl th{padding:10px 14px;font-size:10px;font-weight:700;text-align:left;color:var(--mu);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.vstbl th.us{color:var(--g);background:rgba(0,255,136,.06)}
+.vstbl td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05)}
+.vstbl td.us{background:rgba(0,255,136,.04);color:var(--g);font-weight:600}
+.vstbl tr:last-child td{border-bottom:none}
+.chk{color:var(--g)}.xmk{color:var(--r)}.pmk{color:var(--o)}
+/* AI */
+.aicard{max-width:600px;padding:26px 34px;border-radius:18px;border:1px solid rgba(168,85,247,.3);background:rgba(168,85,247,.05);text-align:center;margin-top:16px}
+.aiico{font-size:48px;margin-bottom:10px;filter:drop-shadow(0 0 14px rgba(168,85,247,.8))}
+.aittl{font-size:20px;font-weight:800;color:#fff;margin-bottom:7px}
+.aisub{font-size:12px;color:var(--mu);line-height:1.7;max-width:440px;margin:0 auto 16px}
+.aichiips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.aich{padding:4px 12px;border-radius:999px;font-size:10px;font-weight:600;border:1px solid rgba(168,85,247,.4);color:var(--p);background:rgba(168,85,247,.08)}
+/* CTA */
+.ctac{text-align:center;max-width:600px}
+.ctat{font-size:clamp(36px,7vw,70px);font-weight:900;line-height:1;background:linear-gradient(135deg,var(--g),var(--c));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
+.ctasub{font-size:15px;color:var(--mu);line-height:1.7;margin-bottom:22px}
+.ctarow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.ctai{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);font-size:12px;color:var(--tx)}
+.ctai span{color:var(--c)}
+.hbdg{display:inline-block;padding:10px 26px;border-radius:10px;background:linear-gradient(135deg,var(--g),var(--c));color:#000;font-weight:800;font-size:14px;letter-spacing:1px;box-shadow:0 0 24px rgba(0,255,136,.3)}
+</style>
+</head>
+<body>
+<canvas id="mx"></canvas>
+<div id="nav">
+  <div class="logo">⬡ OpenC2 v1.0</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="nbtn" onclick="toggleNotes()">📋 Notas [N]</button>
+    <span class="ctr" id="ctr">01 / 12</span>
+  </div>
+</div>
+<div id="progress" style="width:8.33%"></div>
+<button class="arrow" id="ap">‹</button>
+<button class="arrow" id="an">›</button>
+<div id="dots"></div>
+<div id="np"><div class="np-lbl">🎤 Guión del presentador</div><div id="np-text"></div></div>
+
+<div id="slides">
+
+<!-- S0 HERO -->
+<div class="slide on" data-s="0">
+  <div class="scanl"></div>
+  <div class="hv">● Hackathon Talento Tech 2026</div>
+  <h1 class="ht">OpenC2</h1>
+  <div style="font-size:clamp(14px,2.4vw,24px);font-weight:300;color:var(--c);letter-spacing:8px;margin-bottom:6px">VERSION 1.0</div>
+  <p class="sub">Plataforma de ciberseguridad construida desde cero.<br>Comunicaciones cifradas · Trazabilidad blockchain · IA integrada.</p>
+  <div class="hbadges">
+    <div class="badge bg">RSA-3072 · AES-256-GCM</div>
+    <div class="badge bc">Blockchain Solana</div>
+    <div class="badge bp">Claude Sonnet 4.6</div>
+    <div class="badge bo">Producto Propio</div>
+  </div>
+  <div class="vp">
+    <div class="vp-icon">🎯</div>
+    <div><div class="vp-lbl">Lo que verán hoy</div><div class="vp-txt">Una demostración en vivo de cada capacidad de OpenC2. No slides estáticos — el sistema operando en tiempo real.</div></div>
+  </div>
+</div>
+
+<!-- S1 PROBLEMA -->
+<div class="slide" data-s="1">
+  <div class="tag">El desafío</div>
+  <h2 class="st">El mercado de ciberseguridad <span class="acc">necesita innovación</span></h2>
+  <div class="pgrid">
+    <div class="pc"><div class="pico">🔓</div><h3>Sin cifrado real</h3><p>Herramientas existentes usan comunicaciones débiles, interceptables por cualquier monitor de red moderno.</p></div>
+    <div class="pc"><div class="pico">📋</div><h3>Sin trazabilidad</h3><p>No hay audit trail inmutable. Los logs se borran y manipulan. La evidencia forense desaparece.</p></div>
+    <div class="pc"><div class="pico">🧩</div><h3>Todo fragmentado</h3><p>OPSEC, transferencia, persistencia, reporting — sistemas separados, sin integración, sin coherencia.</p></div>
+    <div class="pc"><div class="pico">🤖</div><h3>Cero inteligencia</h3><p>Las plataformas actuales no aprovechan IA para automatización de análisis ni toma de decisiones.</p></div>
+  </div>
+  <div class="vp">
+    <div class="vp-icon">💡</div>
+    <div><div class="vp-lbl">Nuestra respuesta</div><div class="vp-txt">OpenC2 v1.0 resuelve los cuatro problemas en una sola plataforma: cifrado real, blockchain, todo integrado, construido con IA.</div></div>
+  </div>
+</div>
+
+<!-- S2 ARQUITECTURA -->
+<div class="slide" data-s="2">
+  <div class="tag">Arquitectura</div>
+  <h2 class="st">Tres capas. Una <span class="acc">plataforma.</span></h2>
+  <div class="arch">
+    <div class="al alop"><span style="font-size:18px">🖥️</span><div><div class="altt" style="color:var(--p)">Dashboard Operador</div><div class="ald">React 18 + Vite + Tailwind · SSE real-time · JWT Auth · TypeScript</div></div></div>
+    <div class="ac"><div class="acb">SSE push · REST API · JWT HS256</div><div class="acl"></div></div>
+    <div class="al alsv"><span style="font-size:18px">⚡</span><div><div class="altt" style="color:var(--c)">OpenC2 Server</div><div class="ald">FastAPI / asyncio · AgentManager · PubSub · SQLite Queue · Audit Trail → Solana</div></div></div>
+    <div class="ac"><div class="acb">WebSocket cifrado · Canal DNS UDP (covert)</div><div class="acl"></div></div>
+    <div class="al alag"><span style="font-size:18px">🎯</span><div><div class="altt" style="color:var(--g)">OpenC2 Agent</div><div class="ald">Python asyncio · Hot-swap RSA-PSS · Heartbeat ±30% jitter</div><div class="chips"><span class="chip">shell</span><span class="chip">sysinfo</span><span class="chip">opsec</span><span class="chip">persist</span><span class="chip">filetransfer</span></div></div></div>
+  </div>
+  <div class="vp">
+    <div class="vp-icon">🏗️</div>
+    <div><div class="vp-lbl">Por qué esta arquitectura</div><div class="vp-txt">Separación total de responsabilidades. El servidor orquesta sin tocar el target. El agente opera autónomamente. El dashboard solo observa.</div></div>
+  </div>
+</div>
+
+<!-- S3 CONEXIÓN CIFRADA -->
+<div class="slide" data-s="3">
+  <div class="ptag">FASE 1 — CONEXIÓN</div>
+  <h2 class="st">Handshake <span class="app">RSA-3072</span> en acción</h2>
+  <div class="cstage">
+    <div class="csrow">
+      <div class="csbox agt"><div class="cslbl">Target</div><div class="csname">AGENT</div><div style="font-size:9px;color:var(--mu);margin-top:2px">Python asyncio</div></div>
+      <div class="csmid">
+        <div><div class="csalbl" id="al1" style="color:var(--g)">→ HELLO + RSA Public Key</div><div class="csarr a2s"><div class="csafill" id="af1"></div></div></div>
+        <div style="margin-top:6px"><div class="csalbl" id="al2" style="color:var(--c)">← AES Session Key (RSA-OAEP cifrado)</div><div class="csarr s2a"><div class="csafill" id="af2"></div></div></div>
+      </div>
+      <div class="csbox srv"><div class="cslbl">Servidor</div><div class="csname">C2</div><div style="font-size:9px;color:var(--mu);margin-top:2px">FastAPI</div></div>
+    </div>
+    <div id="cs-steps">
+      <div class="csstep" id="cst0"><span class="cssi">🔑</span><span class="csst">Agent genera par RSA-3072 OAEP — clave pública y privada</span></div>
+      <div class="csstep" id="cst1"><span class="cssi">📤</span><span class="csst">Envía HELLO con clave pública al servidor (en claro, aún sin cifrar)</span></div>
+      <div class="csstep" id="cst2"><span class="cssi">🔐</span><span class="csst">Servidor genera AES-256-GCM session key → la cifra con la RSA pública del agent</span></div>
+      <div class="csstep" id="cst3"><span class="cssi">📥</span><span class="csst">Agent descifra session key con su clave privada RSA</span></div>
+      <div class="csstep ok" id="cst4"><span class="cssi">✅</span><span class="csst">Canal AES-256-GCM + HMAC-SHA256 establecido. Nonce único por mensaje.</span></div>
+    </div>
+    <div class="lock" id="lock">🔒<div id="lock-txt" style="font-size:11px;color:var(--g);margin-top:4px;opacity:0;transition:opacity .5s">Canal cifrado end-to-end activo</div></div>
+  </div>
+  <button class="dbtn" id="btn-crypto" onclick="runCrypto()"><span class="pdot"></span> Ejecutar handshake</button>
+  <div class="vp">
+    <div class="vp-icon">🛡️</div>
+    <div><div class="vp-lbl">Por qué RSA-3072</div><div class="vp-txt">NIST SP 800-131A requiere mínimo 2048 bits hasta 2030. Usamos 3072 para garantizar seguridad post-2030 desde el primer día.</div></div>
+  </div>
+</div>
+
+<!-- S4 SYSINFO -->
+<div class="slide" data-s="4">
+  <div class="ptag">FASE 2 — RECONOCIMIENTO</div>
+  <h2 class="st">Sysinfo: conocer el <span class="agg">entorno</span></h2>
+  <div class="tw">
+    <div class="th"><div class="td r"></div><div class="td y"></div><div class="td gg"></div><span class="ttl">openc2 — operator ● [AES-256-GCM activo]</span></div>
+    <div class="tb" id="sys-tb"><div class="tline"><span class="tpmt">openc2 ❯</span><span class="cur"></span></div></div>
+  </div>
+  <button class="dbtn" id="btn-sys" onclick="runSysinfo()"><span class="pdot"></span> Recopilar sysinfo</button>
+  <div class="vp">
+    <div class="vp-icon">🔍</div>
+    <div><div class="vp-lbl">Por qué recopilar primero</div><div class="vp-txt">Sin contexto no hay estrategia. OS, CPU, RAM, procesos activos, interfaces de red — todo esto guía las acciones siguientes inteligentemente.</div></div>
+  </div>
+</div>
+
+<!-- S5 OPSEC -->
+<div class="slide" data-s="5">
+  <div class="ptag">FASE 3 — ANÁLISIS OPSEC</div>
+  <h2 class="st">Detectar defensas <span class="aoo">antes de actuar</span></h2>
+  <div class="rdrwrap">
+    <svg width="170" height="170" viewBox="0 0 180 180">
+      <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(0,212,255,0.1)" stroke-width="1"/>
+      <circle cx="90" cy="90" r="55" fill="none" stroke="rgba(0,212,255,0.08)" stroke-width="1"/>
+      <circle cx="90" cy="90" r="28" fill="none" stroke="rgba(0,212,255,0.06)" stroke-width="1"/>
+      <line x1="90" y1="10" x2="90" y2="170" stroke="rgba(0,212,255,0.06)" stroke-width="1"/>
+      <line x1="10" y1="90" x2="170" y2="90" stroke="rgba(0,212,255,0.06)" stroke-width="1"/>
+      <g id="rsweep" style="transform-origin:90px 90px">
+        <path d="M90,90 L90,10 A80,80,0,0,1,170,90 Z" fill="url(#rg)" opacity="0.5"/>
+      </g>
+      <defs><radialGradient id="rg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#00d4ff" stop-opacity="0.6"/><stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/></radialGradient></defs>
+      <text x="90" y="94" text-anchor="middle" font-size="9" fill="#00d4ff" font-family="monospace" id="rdrst">LISTO</text>
+    </svg>
+    <div class="opsec-res">
+      <div class="or-ttl">Resultados del scan OPSEC</div>
+      <div class="ori" id="or1"><span class="orico">🛡️</span><span class="orl">CrowdStrike Falcon</span><span class="ors ok">CLEAR</span></div>
+      <div class="ori" id="or2"><span class="orico">⚠️</span><span class="orl">Windows Defender</span><span class="ors warn">ACTIVO</span></div>
+      <div class="ori" id="or3"><span class="orico">🔎</span><span class="orl">Sysmon</span><span class="ors ok">CLEAR</span></div>
+      <div class="ori" id="or4"><span class="orico">📦</span><span class="orl">Sandbox / VM Analysis</span><span class="ors ok">CLEAR</span></div>
+      <div class="ori" id="or5"><span class="orico">🌀</span><span class="orl">SentinelOne</span><span class="ors ok">CLEAR</span></div>
+      <div class="ori" id="or6"><span class="orico">🌐</span><span class="orl">Network Monitor</span><span class="ors warn">DETECTADO</span></div>
+    </div>
+  </div>
+  <button class="dbtn" id="btn-opsec" onclick="runOpsec()"><span class="pdot"></span> Iniciar scan OPSEC</button>
+  <div class="vp">
+    <div class="vp-icon">👁️</div>
+    <div><div class="vp-lbl">Por qué OPSEC automático</div><div class="vp-txt">Actuar sin conocer las defensas es un error costoso. OpenC2 detecta 6+ soluciones de seguridad de forma proactiva, sin que el operador lo solicite.</div></div>
+  </div>
+</div>
+
+<!-- S6 PERSISTENCIA -->
+<div class="slide" data-s="6">
+  <div class="ptag">FASE 4 — PERSISTENCIA</div>
+  <h2 class="st">Acceso garantizado <span class="aoo">post-reboot</span></h2>
+  <div class="pswrap">
+    <div class="pstabs">
+      <div class="pstb on" onclick="showPs('win',this)">🪟 Windows</div>
+      <div class="pstb" onclick="showPs('lin',this)">🐧 Linux</div>
+    </div>
+    <div class="pscon on" id="pswin">
+      <div class="pscode" id="pscwin">
+<span class="pcc"># Método 1 — Registry Run Key</span>
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+  <span class="pk">OpenC2Svc</span> = <span class="pv">"C:\Users\user\AppData\Local\svc.exe"</span>
+
+<span class="pcc"># Método 2 — Scheduled Task (backup)</span>
+Task: <span class="pk">WindowsUpdateHelper</span>
+Trigger: <span class="pv">At system startup</span>
+Action:  <span class="pv">svc.exe --reconnect --silent</span>
+RunAs:   <span class="pv">SYSTEM</span>
+
+<span class="pv">✅ Persistencia dual instalada</span>
+<span class="pv">✅ Sobrevive reinicio del sistema</span></div>
+    </div>
+    <div class="pscon" id="pslin">
+      <div class="pscode" id="psclin">
+<span class="pcc"># Método 1 — Cron (usuario actual)</span>
+<span class="pk">@reboot</span> <span class="pv">/home/user/.local/bin/agent --daemon</span>
+
+<span class="pcc"># Método 2 — Systemd (root)</span>
+[Unit]    Description=<span class="pk">System Health Monitor</span>
+[Service] ExecStart=<span class="pv">/usr/local/bin/agent --silent</span>
+[Install] WantedBy=<span class="pv">multi-user.target</span>
+
+<span class="pv">$ systemctl enable agent.service --now</span>
+<span class="pv">✅ Persistencia dual instalada</span></div>
+    </div>
+  </div>
+  <button class="dbtn" id="btn-ps" onclick="runPersist()"><span class="pdot"></span> Instalar persistencia</button>
+  <div class="vp">
+    <div class="vp-icon">🔄</div>
+    <div><div class="vp-lbl">Por qué persistencia dual</div><div class="vp-txt">Una sola entrada puede ser eliminada por AV. Con RunKey + Scheduled Task (Win) o Cron + Systemd (Linux), garantizamos continuidad incluso si una es removida.</div></div>
+  </div>
+</div>
+
+<!-- S7 FILE TRANSFER -->
+<div class="slide" data-s="7">
+  <div class="ptag">FASE 5 — TRANSFERENCIA</div>
+  <h2 class="st">Movimiento de datos <span class="agg">cifrado y verificado</span></h2>
+  <div class="ftwrap">
+    <div class="ftrow ftu">
+      <div class="ftlbl"><span class="ftnm">📤 UPLOAD: payload.bin → target</span><span class="ftpct" id="upct">0%</span></div>
+      <div class="ftbar"><div class="ftfill" id="ubar"></div></div>
+      <div class="ftmeta">AES-256-GCM · Chunks 64KB · ETA: <span id="ueta">calculando...</span></div>
+    </div>
+    <div class="ftrow ftd">
+      <div class="ftlbl"><span class="ftnm">📥 DOWNLOAD: report.zip ← target</span><span class="ftpct" id="dpct">0%</span></div>
+      <div class="ftbar"><div class="ftfill" id="dbar"></div></div>
+      <div class="ftmeta">AES-256-GCM · Max 10MB · SHA-256 verification</div>
+    </div>
+    <div class="ftv" id="ftv">✅ SHA-256: a3f9b2c1...d4e58f92 OK &nbsp;|&nbsp; ✅ Integridad verificada &nbsp;|&nbsp; ✅ 2 transferencias completas</div>
+  </div>
+  <button class="dbtn" id="btn-ft" onclick="runFt()"><span class="pdot"></span> Iniciar transferencias</button>
+  <div class="vp">
+    <div class="vp-icon">🔐</div>
+    <div><div class="vp-lbl">Por qué cifrar la transferencia</div><div class="vp-txt">Cada byte va en AES-256-GCM (mismo estándar que WhatsApp). SHA-256 verifica integridad en ambos extremos. Si un byte cambia, se detecta.</div></div>
+  </div>
+</div>
+
+<!-- S8 BLOCKCHAIN -->
+<div class="slide" data-s="8">
+  <div class="tag">Trazabilidad</div>
+  <h2 class="st">Cada acción, un bloque. <span class="aoo">Evidencia inmutable.</span></h2>
+  <div class="chainwrap" id="chainwrap">
+    <div class="cblk" id="cb0"><div class="cbid">Bloque #001</div><div class="cbhsh">a3f9b2c1d4e5f6...</div><div class="cbdat">🤝 HELLO</div><div class="cbts">14:23:01.042</div></div>
+    <div class="clink" id="cl1">⛓</div>
+    <div class="cblk" id="cb1"><div class="cbid">Bloque #002</div><div class="cbhsh">7d8e1f2a4b6c9e...</div><div class="cbdat">📊 SYSINFO</div><div class="cbts">14:23:03.118</div></div>
+    <div class="clink" id="cl2">⛓</div>
+    <div class="cblk" id="cb2"><div class="cbid">Bloque #003</div><div class="cbhsh">c9a2e5f8b1d3a4...</div><div class="cbdat">👁️ OPSEC</div><div class="cbts">14:23:07.445</div></div>
+    <div class="clink" id="cl3">⛓</div>
+    <div class="cblk" id="cb3"><div class="cbid">Bloque #004</div><div class="cbhsh">f2e8a1d9c3b5e6...</div><div class="cbdat">🔄 PERSIST</div><div class="cbts">14:23:12.801</div></div>
+    <div class="clink" id="cl4">→</div>
+    <div class="csol" id="csoL"><div class="csollbl">🌐 Anclado en</div><div class="csolval">⬡ Solana</div><div class="csoltx">openc2:block#4:f2e8a1d9...</div></div>
+  </div>
+  <button class="dbtn" id="btn-chain" onclick="runChain()"><span class="pdot"></span> Construir cadena</button>
+  <div class="vp">
+    <div class="vp-icon">⛓️</div>
+    <div><div class="vp-lbl">Por qué blockchain</div><div class="vp-txt">En auditorías forenses, la pregunta es: ¿puedes probar que esta evidencia no fue alterada? Con SHA-256 encadenado + ancla Solana, la respuesta siempre es sí.</div></div>
+  </div>
+</div>
+
+<!-- S9 DASHBOARD -->
+<div class="slide" data-s="9">
+  <div class="tag">Control total</div>
+  <h2 class="st">Dashboard en <span class="agg">tiempo real</span></h2>
+  <div class="dashwrap">
+    <div class="dashhdr">
+      <div class="dashttl">⬡ OpenC2 v1.0 — Operator Dashboard</div>
+      <div class="dashst"><div class="ldot"></div> SSE Connected · JWT válido</div>
+    </div>
+    <div class="dashbody">
+      <div class="dashag">
+        <div class="dlbl">Agentes conectados</div>
+        <div class="agitem"><div class="agdot on"></div><div><div class="agnm">CORP-WIN-042</div><div class="agmt">Win11 x64 · CPU 34% · RAM 26%</div></div><div class="agbdg">recon</div></div>
+        <div class="agitem"><div class="agdot on" style="animation-delay:.5s"></div><div><div class="agnm">CORP-WIN-087</div><div class="agmt">Win10 x64 · CPU 12% · RAM 45%</div></div><div class="agbdg">lateral</div></div>
+        <div class="agitem" style="opacity:.45"><div class="agdot" style="background:var(--mu)"></div><div><div class="agnm">LINUX-SRV-01</div><div class="agmt">Ubuntu 22.04 · offline</div></div><div class="agbdg" style="border-color:var(--mu);color:var(--mu)">prod</div></div>
+      </div>
+      <div class="dashlog">
+        <div class="dlbl">Audit log en vivo (SSE push)</div>
+        <div id="live-log">
+          <div class="lgi"><span class="lgt">14:23:01</span>HELLO recv [CORP-WIN-042:recon]<span class="lgv"> ✅</span></div>
+          <div class="lgi"><span class="lgt">14:23:03</span>SYSINFO collected<span class="lgv"> ✅</span></div>
+          <div class="lgi"><span class="lgt">14:23:07</span>OPSEC — Defender ACTIVO<span class="lgw"> ⚠️</span></div>
+          <div class="lgi"><span class="lgt">14:23:12</span>PERSIST installed [RunKey+Task]<span class="lgv"> ✅</span></div>
+          <div class="lgi"><span class="lgt">14:23:18</span>FILE_TRANSFER upload 100%<span class="lgv"> ✅</span></div>
+          <div class="lgi" id="ll-cursor"><span class="lgt" id="ll-ts">14:23:24</span><span class="cur"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vp">
+    <div class="vp-icon">📡</div>
+    <div><div class="vp-lbl">Por qué SSE en lugar de polling</div><div class="vp-txt">Server-Sent Events empuja cada evento al dashboard en milisegundos. Sin latencia, sin datos perdidos. El log persiste aunque el operador cierre y reabra el browser.</div></div>
+  </div>
+</div>
+
+<!-- S10 VS TABLE -->
+<div class="slide" data-s="10">
+  <div class="tag">Diferenciadores</div>
+  <h2 class="st">¿Por qué <span class="agg">OpenC2</span>?</h2>
+  <table class="vstbl">
+    <thead><tr><th>Capacidad</th><th>Alternativas open-source</th><th class="us">⬡ OpenC2 v1.0</th></tr></thead>
+    <tbody>
+      <tr><td>Cifrado de comunicaciones</td><td><span class="pmk">⚡</span> TLS básico / sin cifrado</td><td class="us"><span class="chk">✅</span> RSA-3072 + AES-256-GCM + HMAC-SHA256</td></tr>
+      <tr><td>Audit trail</td><td><span class="xmk">✗</span> Logs mutables, borrables</td><td class="us"><span class="chk">✅</span> SHA-256 encadenado + ancla Solana</td></tr>
+      <tr><td>OPSEC automático</td><td><span class="xmk">✗</span> Manual o inexistente</td><td class="us"><span class="chk">✅</span> 6+ EDR/AV detectados proactivamente</td></tr>
+      <tr><td>Plugin system</td><td><span class="pmk">⚡</span> Requiere recompilación</td><td class="us"><span class="chk">✅</span> Hot-swap firmado RSA-PSS en runtime</td></tr>
+      <tr><td>Canal alternativo</td><td><span class="xmk">✗</span> Solo TCP/HTTP</td><td class="us"><span class="chk">✅</span> Canal DNS covert (UDP + base32 + AES)</td></tr>
+      <tr><td>Dashboard real-time</td><td><span class="pmk">⚡</span> CLI o sin interfaz</td><td class="us"><span class="chk">✅</span> React 18 SSE + JWT + TypeScript</td></tr>
+      <tr><td>Construido con IA</td><td><span class="xmk">✗</span> No</td><td class="us"><span class="chk">✅</span> Claude Sonnet 4.6 — Anthropic</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- S11 CIERRE -->
+<div class="slide" data-s="11">
+  <div class="aicard" style="max-width:700px;display:flex;gap:24px;align-items:center;text-align:left;padding:22px 28px;margin-bottom:14px">
+    <div style="font-size:44px;filter:drop-shadow(0 0 14px rgba(168,85,247,.8));flex-shrink:0">🤖</div>
+    <div>
+      <div class="aittl" style="font-size:16px;margin-bottom:5px">Co-diseñado con Claude Sonnet 4.6</div>
+      <div class="aisub" style="margin:0;text-align:left;font-size:11px">Arquitectura, protocolos, edge cases, debugging de race conditions asyncio, integración Solana, multi-agente — todo co-diseñado con IA. No "asistido": co-diseñado.</div>
+      <div class="aichiips" style="margin-top:10px;justify-content:flex-start">
+        <span class="aich">RSA+AES protocol</span><span class="aich">Solana integration</span><span class="aich">Multi-agente labels</span><span class="aich">OPSEC logic</span><span class="aich">SSE streaming</span>
+      </div>
+    </div>
+  </div>
+  <div class="ctac">
+    <div class="ctat">OpenC2 v1.0</div>
+    <p class="ctasub">Plataforma de ciberseguridad con cifrado de grado militar, trazabilidad blockchain y construcción asistida por IA. Desde cero, para este hackathon.</p>
+    <div class="ctarow">
+      <div class="ctai"><span>📧</span> equipo@openc2.lab</div>
+      <div class="ctai"><span>🛠️</span> FastAPI · React · Solana · Claude</div>
+    </div>
+    <div class="hbdg">🏆 Hackathon Talento Tech 2026</div>
+  </div>
+</div>
+
+</div><!-- /slides -->
+<script>
+// ── MATRIX ──
+const cv=document.getElementById('mx'),cx=cv.getContext('2d');
+function rz(){cv.width=window.innerWidth;cv.height=window.innerHeight}rz();window.addEventListener('resize',rz);
+const cols=Math.floor(window.innerWidth/20),drops=Array(cols).fill(0).map(()=>Math.random()*-100);
+const chs='01アイウカサタナハマラ';
+setInterval(()=>{cx.fillStyle='rgba(5,10,15,0.05)';cx.fillRect(0,0,cv.width,cv.height);cx.fillStyle='#00ff88';cx.font='13px Courier New';drops.forEach((y,i)=>{cx.fillText(chs[Math.floor(Math.random()*chs.length)],i*20,y*20);if(y*20>cv.height&&Math.random()>.975)drops[i]=0;drops[i]++;});},60);
+
+// ── NAVIGATION ──
+const TOTAL=12;let cur=0;
+const sls=document.querySelectorAll('.slide');
+const dotsEl=document.getElementById('dots');
+for(let i=0;i<TOTAL;i++){const d=document.createElement('div');d.className='dot'+(i===0?' on':'');d.onclick=()=>goTo(i);dotsEl.appendChild(d);}
+function goTo(idx){
+  if(idx<0||idx>=TOTAL)return;
+  sls[cur].classList.remove('on');sls[cur].classList.add('out');
+  setTimeout(()=>sls[cur].classList.remove('out'),550);
+  cur=idx;sls[cur].classList.add('on');
+  document.getElementById('ctr').textContent=String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  document.getElementById('progress').style.width=((cur+1)/TOTAL*100)+'%';
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===cur));
+  updateNotes();onEnter(cur);
+}
+document.getElementById('ap').onclick=()=>goTo(cur-1);
+document.getElementById('an').onclick=()=>goTo(cur+1);
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')goTo(cur+1);
+  if(e.key==='ArrowLeft')goTo(cur-1);
+  if(e.key==='n'||e.key==='N')toggleNotes();
+  if(e.key==='Home')goTo(0);if(e.key==='End')goTo(TOTAL-1);
+});
+let tx=0;
+document.addEventListener('touchstart',e=>tx=e.touches[0].clientX);
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)goTo(cur+(dx<0?1:-1));});
+
+// ── NOTES ──
+const NOTES=[
+  "Buenas tardes. Soy [nombre] y les presento OpenC2 v1.0, una plataforma de ciberseguridad construida desde cero para el Hackathon Talento Tech 2026. En los próximos minutos no verán slides estáticos — verán el sistema funcionando en tiempo real.",
+  "Todo producto nace de un problema real. El mercado de seguridad tiene herramientas fragmentadas, sin cifrado serio, sin trazabilidad forense y sin inteligencia integrada. OpenC2 resuelve los cuatro en una sola plataforma.",
+  "La arquitectura tiene tres capas completamente separadas: el dashboard para el operador, el servidor que orquesta todo, y los agentes en los sistemas objetivo. Cada capa tiene una responsabilidad única y clara.",
+  "Lo primero que ocurre cuando un agente se conecta es un handshake RSA-3072. Presionen el botón para verlo en tiempo real. Este proceso establece el canal cifrado que protege toda la comunicación posterior.",
+  "Una vez conectado, el operador recopila información del sistema. Presionen el botón para ver los datos que llegarían en tiempo real: OS, hardware, procesos, red. Todo lo necesario para tomar decisiones informadas.",
+  "Antes de cualquier acción, OpenC2 escanea las defensas activas de forma automática. Presionen el botón para ver el scan en acción. El operador conoce exactamente con qué defensas se enfrenta antes de actuar.",
+  "Con un solo comando, el sistema instala persistencia dual. En Windows: Run Key y Scheduled Task. En Linux: Cron y Systemd. Si una entrada es eliminada, la otra garantiza continuidad.",
+  "OpenC2 también maneja transferencia de archivos bidireccional, cifrada y verificada. Presionen el botón para ver las transferencias. SHA-256 garantiza que cada byte llegó íntegro.",
+  "Y aquí está nuestra innovación más importante: cada acción genera un bloque inmutable en SHA-256. La cadena puede anclarse en Solana. Esto es evidencia forense que no se puede alterar ni falsificar.",
+  "Todo lo que acabamos de demostrar aparece en el dashboard en tiempo real, vía SSE push. El operador nunca pierde contexto. Los eventos llegan en milisegundos. El log es persistente.",
+  "¿Por qué OpenC2 y no una solución existente? Porque ninguna combina RSA-3072 real, blockchain como audit trail, OPSEC automático, plugins hot-swap Y fue co-diseñada con inteligencia artificial.",
+  "OpenC2 fue co-diseñado con Claude Sonnet 4.6 de Anthropic. No 'asistido' — co-diseñado. La arquitectura criptográfica, los edge cases del protocolo, la integración Solana — todo en colaboración con IA. Gracias."
+];
+let notesVisible=false;
+function toggleNotes(){notesVisible=!notesVisible;document.getElementById('np').classList.toggle('show',notesVisible);updateNotes();}
+function updateNotes(){document.getElementById('np-text').textContent=NOTES[cur]||'';}
+
+// ── ON SLIDE ENTER ──
+let logTimer=null;
+function onEnter(idx){
+  if(idx!==9&&logTimer){clearInterval(logTimer);logTimer=null;}
+  if(idx===9)startLiveLog();
+}
+
+// ── LIVE LOG ──
+const extraLogs=[
+  ['HEARTBEAT recv [CORP-WIN-042:recon]','lgv',' ✅'],
+  ['SHELL: "ipconfig /all" → 847 bytes','lgv',' ✅'],
+  ['HEARTBEAT recv [CORP-WIN-087:lateral]','lgv',' ✅'],
+  ['EVENT: OPSEC alert — new process started','lgw',' ⚠️'],
+  ['FILE_TRANSFER download complete 100%','lgv',' ✅'],
+  ['BLOCKCHAIN block #5 → Solana anchored','lgv',' ✅'],
+];
+let logIdx=0;
+function startLiveLog(){
+  logTimer=setInterval(()=>{
+    const ll=document.getElementById('live-log');
+    const cursor=document.getElementById('ll-cursor');
+    const now=new Date();
+    const ts=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const e=extraLogs[logIdx%extraLogs.length];logIdx++;
+    const div=document.createElement('div');div.className='lgi';
+    div.innerHTML=`<span class="lgt">${ts}</span>${e[0]}<span class="${e[1]}">${e[2]}</span>`;
+    ll.insertBefore(div,cursor);
+    if(ll.children.length>12){ll.removeChild(ll.children[0]);}
+    document.getElementById('ll-ts').textContent=ts;
+  },2200);
+}
+
+// ── CRYPTO DEMO ──
+let cryptoDone=false;
+function runCrypto(){
+  if(cryptoDone)resetCrypto();
+  cryptoDone=true;
+  const btn=document.getElementById('btn-crypto');btn.disabled=true;
+  const steps=['cst0','cst1','cst2','cst3','cst4'];
+  const a1=document.getElementById('af1'),a2=document.getElementById('af2');
+  const lock=document.getElementById('lock'),lt=document.getElementById('lock-txt');
+  setTimeout(()=>{document.getElementById('cst0').classList.add('show');},300);
+  setTimeout(()=>{a1.style.width='100%';document.getElementById('cst1').classList.add('show');},900);
+  setTimeout(()=>{document.getElementById('cst2').classList.add('show');},2100);
+  setTimeout(()=>{a2.style.width='100%';document.getElementById('cst3').classList.add('show');},2700);
+  setTimeout(()=>{document.getElementById('cst4').classList.add('show');lock.classList.add('show');setTimeout(()=>lt.style.opacity='1',200);btn.disabled=false;btn.textContent='↺ Reiniciar';},3600);
+}
+function resetCrypto(){
+  ['cst0','cst1','cst2','cst3','cst4'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  document.getElementById('af1').style.width='0';document.getElementById('af2').style.width='0';
+  document.getElementById('lock').classList.remove('show');document.getElementById('lock-txt').style.opacity='0';
+  cryptoDone=false;document.getElementById('btn-crypto').textContent='▶ Ejecutar handshake';
+}
+
+// ── SYSINFO TYPEWRITER ──
+let sysDone=false;
+const sysLines=[
+  {type:'cmd',text:'sysinfo collect'},
+  {type:'inf',text:'→ Hostname:      CORP-WIN-042'},
+  {type:'inf',text:'→ OS:            Windows 11 Pro 23H2 x64'},
+  {type:'inf',text:'→ CPU:           Intel i7-12700 @ 2.10GHz (12 cores)'},
+  {type:'inf',text:'→ CPU Usage:     [████████░░░░░░░░] 34%'},
+  {type:'inf',text:'→ RAM Total:     32.0 GB'},
+  {type:'inf',text:'→ RAM Used:      8.2 GB [██░░░░░░░░░░░░░░] 26%'},
+  {type:'inf',text:'→ Processes:     147 activos'},
+  {type:'inf',text:'→ Net Ifaces:    Ethernet0 (192.168.1.42), Wi-Fi (10.0.0.55)'},
+  {type:'inf',text:'→ User:          CORP-WIN-042\\admin (CORP\\domain)'},
+  {type:'suc',text:'✅ Sysinfo recopilado en 312ms → Bloque #002 generado'},
+];
+function runSysinfo(){
+  if(sysDone)return;sysDone=true;
+  const btn=document.getElementById('btn-sys');btn.disabled=true;
+  const tb=document.getElementById('sys-tb');
+  tb.innerHTML='';
+  let i=0;
+  function next(){
+    if(i>=sysLines.length){btn.disabled=false;return;}
+    const l=sysLines[i++];
+    const div=document.createElement('div');
+    if(l.type==='cmd'){div.className='tline';div.innerHTML=`<span class="tpmt">openc2 ❯</span><span class="tcmd"> ${l.text}</span>`;}
+    else if(l.type==='suc'){div.className='tsuc';div.textContent=l.text;}
+    else{div.className='tout';div.textContent=l.text;}
+    tb.appendChild(div);tb.scrollTop=tb.scrollHeight;
+    setTimeout(next,l.type==='cmd'?400:180);
+  }
+  next();
+}
+
+// ── OPSEC SCAN ──
+let opsecDone=false;
+function runOpsec(){
+  if(opsecDone)resetOpsec();
+  opsecDone=true;
+  const btn=document.getElementById('btn-opsec');btn.disabled=true;
+  const sw=document.getElementById('rsweep'),st=document.getElementById('rdrst');
+  sw.classList.add('spin');st.textContent='SCANNING';
+  const items=['or1','or2','or3','or4','or5','or6'];
+  items.forEach((id,i)=>setTimeout(()=>document.getElementById(id).classList.add('show'),1000+i*600));
+  setTimeout(()=>{sw.classList.remove('spin');st.textContent='COMPLETO';btn.disabled=false;btn.textContent='↺ Repetir scan';},5000);
+}
+function resetOpsec(){
+  ['or1','or2','or3','or4','or5','or6'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  document.getElementById('rsweep').classList.remove('spin');
+  document.getElementById('rdrst').textContent='LISTO';
+  opsecDone=false;document.getElementById('btn-opsec').textContent='▶ Iniciar scan OPSEC';
+}
+
+// ── PERSIST ──
+let psDone=false;
+function showPs(type,btn){
+  document.querySelectorAll('.pstb').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.pscon').forEach(c=>c.classList.remove('on'));
+  btn.classList.add('on');document.getElementById('ps'+type).classList.add('on');
+}
+function runPersist(){
+  if(psDone){['pscwin','psclin'].forEach(id=>{document.getElementById(id).classList.remove('show');});setTimeout(()=>runPersist(),100);psDone=false;return;}
+  psDone=true;
+  const btn=document.getElementById('btn-ps');btn.disabled=true;
+  setTimeout(()=>{document.getElementById('pscwin').classList.add('show');document.getElementById('psclin').classList.add('show');btn.disabled=false;btn.textContent='↺ Reinstalar';},400);
+}
+
+// ── FILE TRANSFER ──
+let ftDone=false;
+function runFt(){
+  if(ftDone)resetFt();
+  ftDone=true;
+  const btn=document.getElementById('btn-ft');btn.disabled=true;
+  const ub=document.getElementById('ubar'),db=document.getElementById('dbar');
+  const up=document.getElementById('upct'),dp=document.getElementById('dpct'),ue=document.getElementById('ueta');
+  ue.textContent='4.2s';
+  ub.style.width='100%';
+  let pct=0;
+  const iv=setInterval(()=>{
+    pct+=4;if(pct>100)pct=100;
+    up.textContent=pct+'%';
+    if(pct>=100)clearInterval(iv);
+  },100);
+  setTimeout(()=>{db.style.width='100%';let p2=0;const iv2=setInterval(()=>{p2+=5;if(p2>100)p2=100;dp.textContent=p2+'%';if(p2>=100)clearInterval(iv2);},80);},1200);
+  setTimeout(()=>{document.getElementById('ftv').classList.add('show');btn.disabled=false;btn.textContent='↺ Repetir';},4500);
+}
+function resetFt(){
+  document.getElementById('ubar').style.transition='none';document.getElementById('dbar').style.transition='none';
+  document.getElementById('ubar').style.width='0';document.getElementById('dbar').style.width='0';
+  document.getElementById('upct').textContent='0%';document.getElementById('dpct').textContent='0%';
+  document.getElementById('ftv').classList.remove('show');ftDone=false;
+  setTimeout(()=>{document.getElementById('ubar').style.transition='width 2.5s ease';document.getElementById('dbar').style.transition='width 2.5s ease';},50);
+  document.getElementById('btn-ft').textContent='▶ Iniciar transferencias';
+}
+
+// ── BLOCKCHAIN ──
+let chainDone=false;
+function runChain(){
+  if(chainDone)resetChain();
+  chainDone=true;
+  const btn=document.getElementById('btn-chain');btn.disabled=true;
+  const seq=[['cb0',300],['cl1',700],['cb1',1000],['cl2',1400],['cb2',1700],['cl3',2100],['cb3',2400],['cl4',2800],['csoL',3100]];
+  seq.forEach(([id,delay])=>setTimeout(()=>document.getElementById(id).classList.add('show'),delay));
+  setTimeout(()=>{btn.disabled=false;btn.textContent='↺ Reconstruir';},3500);
+}
+function resetChain(){
+  ['cb0','cl1','cb1','cl2','cb2','cl3','cb3','cl4','csoL'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  chainDone=false;document.getElementById('btn-chain').textContent='▶ Construir cadena';
+}
+</script>
+</body>
+</html>

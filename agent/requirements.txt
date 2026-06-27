@@ -1,0 +1,6 @@
+websockets==13.1
+cryptography==43.0.3
+pydantic>=2.11.7
+python-dotenv==1.0.1
+psutil==6.1.0
+dnslib==0.9.25
